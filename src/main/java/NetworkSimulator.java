@@ -23,7 +23,7 @@ public abstract class NetworkSimulator
     private double avgMessageDelay;
     protected int traceLevel;
     private EventList eventList;
-    private FileWriter outFile;
+    private FileWriter outFile, inFile;
 
     private OSIRandom rand;
 
@@ -59,6 +59,7 @@ public abstract class NetworkSimulator
         rand = new OSIRandom(seed);
 	try{
 	    outFile = new FileWriter("OutputFile");
+	    inFile = new FileWriter("InputFile");
 	}catch (Exception e) {e.printStackTrace();}
 
         nSim = 0;
@@ -157,6 +158,12 @@ public abstract class NetworkSimulator
                     
                     // Let the student handle the new message
                     aOutput(new Message(new String(nextMessage)));
+                    
+					try {
+						inFile.write(new String(nextMessage), 0, MAXDATASIZE);
+						inFile.write('\n');
+					} catch (IOException e) {e.printStackTrace();}                    
+                    
                     break;
                     
                 default:
@@ -170,6 +177,8 @@ public abstract class NetworkSimulator
 	try{
 	    outFile.flush();
 	    outFile.close();
+	    inFile.flush();
+	    inFile.close();
 	}catch (Exception e) {e.printStackTrace();}
     }
     

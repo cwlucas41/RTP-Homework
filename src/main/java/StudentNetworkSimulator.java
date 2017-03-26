@@ -121,7 +121,9 @@ public class StudentNetworkSimulator extends NetworkSimulator
     // the receiving upper layer.
     protected void aOutput(Message message)
     {
-
+    	Packet p = new Packet(0, 0, 0, message.getData());
+    	System.out.println("Sent: " + p.getPayload());
+    	aInput(p);
     }
     
     // This routine will be called whenever a packet sent from the B-side 
@@ -130,7 +132,7 @@ public class StudentNetworkSimulator extends NetworkSimulator
     // sent from the B-side.
     protected void aInput(Packet packet)
     {
-
+    	toLayer3(A, packet);
     }
     
     // This routine will be called when A's timer expires (thus generating a 
@@ -157,7 +159,8 @@ public class StudentNetworkSimulator extends NetworkSimulator
     // sent from the A-side.
     protected void bInput(Packet packet)
     {
-
+    	System.out.println("Rcvd: " + packet.getPayload());
+    	toLayer5(packet.getPayload());
     }
     
     // This routine will be called once, before any of your other B-side 
@@ -172,7 +175,7 @@ public class StudentNetworkSimulator extends NetworkSimulator
     // Use to print final statistics
     protected void Simulation_done()
     {
-
+    	
     }	
 
 }
