@@ -89,9 +89,19 @@ public class StopAndWaitSimulator extends NetworkSimulator
      */
 
     public static final int FirstSeqNo = 0;
+    public static final int SEQ_NUM_MAX_SIZE = 2;
+    
     private int WindowSize;
     private double RxmtInterval;
     private int LimitSeqNo;
+    
+    private static int sendSeqNum_A = FirstSeqNo;
+    private static int recvSeqNum_A = FirstSeqNo;
+    private Queue<Packet> packetQueue_A = new LinkedList<Packet>();
+    
+    private static int sendSeqNum_B = FirstSeqNo;
+    private static int recvSeqNum_B = FirstSeqNo;
+    private int ackNum_B = -1;
     
     // Add any necessary class variables here.  Remember, you cannot use
     // these variables to send messages error free!  They can only hold
@@ -109,9 +119,9 @@ public class StopAndWaitSimulator extends NetworkSimulator
                                    double delay)
     {
         super(numMessages, loss, corrupt, avgDelay, trace, seed);
-	WindowSize = winsize;
-	LimitSeqNo = 2*winsize;
-	RxmtInterval = delay;
+		WindowSize = winsize;
+		LimitSeqNo = 2*winsize;
+		RxmtInterval = delay;
     }
 
     
@@ -121,12 +131,15 @@ public class StopAndWaitSimulator extends NetworkSimulator
     // the receiving upper layer.
     protected void aOutput(Message message)
     {
-    	String payload = message.getData();
-    	int seq = 0;
-    	int ack = 0;
-    	int checksum = calculateChecksum(seq, ack, payload);
-    	Packet p = new Packet(seq, ack, checksum, payload);
-    	aInput(p);
+    	Packet p = new Packet(sendSeqNum_A, -1, 0, message.getData());
+    	p.setChecksum(calculateChecksum(p));
+    	packetQueue_A.add(p);
+    	
+    	sendSeqNum_A = getNextSequenceNumber(sendSeqNum_A);
+    	
+    	if (packetQueue_A.size() == 1) {
+    		toLayer3(A, packetQueue_A.peek());
+    	}
     }
     
     // This routine will be called whenever a packet sent from the B-side 
@@ -135,7 +148,27 @@ public class StopAndWaitSimulator extends NetworkSimulator
     // sent from the B-side.
     protected void aInput(Packet packet)
     {
-    	toLayer3(A, packet);
+//    	System.out.println("new packet");
+//    	System.out.println(packet.getChecksum() == calculateChecksum(packet));
+//    	System.out.println(packetQueue_A.peek() != null);
+//    	System.out.println(packet.getAcknum() == packetQueue_A.peek().getSeqnum());
+    	
+    	
+		// if valid ack that matched packet queue head's seq num, remove head
+		if (
+				packet.getChecksum() == calculateChecksum(packet) 
+				&& packetQueue_A.peek() != null 
+				&& packet.getAcknum() == packetQueue_A.peek().getSeqnum()
+				&& packet.getSeqnum() == recvSeqNum_A
+		) {
+			recvSeqNum_A = getNextSequenceNumber(recvSeqNum_A);
+			packetQueue_A.remove();
+		}
+		
+		// send head of packet queue if exists
+		if (packetQueue_A.peek() != null) {
+			toLayer3(A, packetQueue_A.peek());
+		}
     }
     
     // This routine will be called when A's timer expires (thus generating a 
@@ -162,7 +195,30 @@ public class StopAndWaitSimulator extends NetworkSimulator
     // sent from the A-side.
     protected void bInput(Packet packet)
     {
-    	toLayer5(packet.getPayload());
+//    	System.out.println(packet.getChecksum() == calculateChecksum(packet));
+//    	System.out.println(packet.getSeqnum() + " expected: " + recvSeqNum_B);
+//    	System.out.println(packet.getPayload());
+    	if (
+    			packet.getChecksum() == calculateChecksum(packet) 
+    			&& packet.getSeqnum() == recvSeqNum_B
+    	) {
+    		toLayer5(packet.getPayload());
+    		recvSeqNum_B = getNextSequenceNumber(recvSeqNum_B);
+    		
+    		ackNum_B = packet.getSeqnum();
+    		
+    		Packet p = new Packet(sendSeqNum_B, ackNum_B, 0);
+    		p.setChecksum(calculateChecksum(p));
+    		
+    		sendSeqNum_B = getNextSequenceNumber(sendSeqNum_B);
+    		toLayer3(B, p);
+    	} else {
+    		Packet p = new Packet(sendSeqNum_B, ackNum_B, 0);
+    		p.setChecksum(calculateChecksum(p));
+    		
+    		sendSeqNum_B = getNextSequenceNumber(sendSeqNum_B);
+    		toLayer3(B, p);
+    	}
     }
     
     // This routine will be called once, before any of your other B-side 
@@ -180,8 +236,11 @@ public class StopAndWaitSimulator extends NetworkSimulator
     	
     }
     
-    private int calculateChecksum(int seq, int ack, String payload) {
-    	return seq + ack + payload.chars().sum();
+    private int calculateChecksum(Packet p) {
+    	return p.getSeqnum() + p.getAcknum() + p.getPayload().chars().sum();
     }
-
+    
+    static int getNextSequenceNumber(int sequenceNumber) {
+    	return (sequenceNumber + 1) % SEQ_NUM_MAX_SIZE;
+    }
 }
