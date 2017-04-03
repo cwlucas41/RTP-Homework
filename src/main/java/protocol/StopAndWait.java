@@ -103,6 +103,8 @@ public class StopAndWait extends NetworkSimulator
     
     private static int sendSeqNum_A = FirstSeqNo;
     private Queue<Packet> unsentPacketQueue_A = new LinkedList<Packet>();
+    private Packet unackedPacket_A = null;
+    private boolean timerSet_A = false;
     
     private static int recvSeqNum_B = FirstSeqNo;
     private int ackNum_B = -1;
@@ -127,6 +129,8 @@ public class StopAndWait extends NetworkSimulator
 		LimitSeqNo = 2*winsize;
 		RxmtInterval = delay;
     }
+    
+    boolean first = true;
 
     
     // This routine will be called whenever the upper layer at the sender [A]
@@ -140,8 +144,8 @@ public class StopAndWait extends NetworkSimulator
     	
     	sendSeqNum_A = getNextSequenceNumber(sendSeqNum_A);
     	
-    	if (unsentPacketQueue_A.size() == 1) {
-    		toLayer3(A, unsentPacketQueue_A.peek());
+    	if (unackedPacket_A == null && unsentPacketQueue_A.size() == 1) {
+    		sendNextIfExists();;
     	}
     }
     
@@ -151,20 +155,36 @@ public class StopAndWait extends NetworkSimulator
     // sent from the B-side.
     protected void aInput(Packet packet)
     {
-    	
 		// if valid ack that matched packet queue head's seq num, remove head
+    	
 		if (
-			packet.getChecksum() == calculateChecksum(packet) 
-			&& unsentPacketQueue_A.peek() != null 
-			&& packet.getAcknum() == unsentPacketQueue_A.peek().getSeqnum()
+			packet != null
+			&& packet.getChecksum() == calculateChecksum(packet) 
+			&& unackedPacket_A != null 
+			&& packet.getAcknum() == unackedPacket_A.getSeqnum()
 		) {
-			unsentPacketQueue_A.remove();
+			unackedPacket_A = null;
+			sendNextIfExists();
+		} else {
+			transmitUnacked();
 		}
-		
+    }
+    
+    private void sendNextIfExists() {
 		// send head of packet queue if exists
-		if (unsentPacketQueue_A.peek() != null) {
-			toLayer3(A, unsentPacketQueue_A.peek());
+		if (unackedPacket_A == null && unsentPacketQueue_A.peek() != null) {
+			unackedPacket_A = unsentPacketQueue_A.remove();
+			transmitUnacked();
 		}
+    }
+    
+    private void transmitUnacked() {
+    	if (unackedPacket_A != null) {
+	    	toLayer3(A, unackedPacket_A);
+	    	if (timerSet_A) { stopTimer(A); }
+			startTimer(A, RxmtInterval);
+			timerSet_A = true;
+    	}
     }
     
     // This routine will be called when A's timer expires (thus generating a 
@@ -173,7 +193,8 @@ public class StopAndWait extends NetworkSimulator
     // for how the timer is started and stopped. 
     protected void aTimerInterrupt()
     {
-
+    	timerSet_A = false;
+		transmitUnacked();
     }
     
     // This routine will be called once, before any of your other A-side 
@@ -219,7 +240,7 @@ public class StopAndWait extends NetworkSimulator
     {
     	
     }
-    
+        
     private Packet newDataPacket(int seq, String newPayload) {
     	Packet p = new Packet(seq, -1, 0, newPayload);
     	p.setChecksum(calculateChecksum(p));

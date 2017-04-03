@@ -17,7 +17,7 @@ public class StopAndWaitTest {
         int trace = 0;
         int seed = 1;
         int winsize = 0;
-        double delay = 0;
+        double delay = 10;
         
 		new StopAndWait(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
 		.runSimulator();
@@ -35,7 +35,7 @@ public class StopAndWaitTest {
         int trace = 0;
         int seed = 1;
         int winsize = 0;
-        double delay = 0;
+        double delay = 10;
         
 		new StopAndWait(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
 		.runSimulator();
@@ -46,19 +46,21 @@ public class StopAndWaitTest {
 	@Test
 	public void rdt3_0Test() {
 		
-		int numMessages = 100;
-        double loss = .25;
-        double corrupt = .25;
-        double avgDelay = 100;
-        int trace = 0;
-        int seed = 1;
-        int winsize = 0;
-        double delay = 0;
-        
-		new StopAndWait(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
-		.runSimulator();
-		
-		assertTrue(DiffTool.diff());
+		for (int i = 0; i < 100; i++) {
+			int numMessages = 100;
+	        double loss = .25;
+	        double corrupt = .25;
+	        double avgDelay = 100;
+	        int trace = 0;
+	        int seed = 1;
+	        int winsize = 0;
+	        double delay = 10;
+	        
+			new StopAndWait(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
+			.runSimulator();
+			
+			assertTrue(DiffTool.diff());
+		}
 	}
 	
 	@Test
