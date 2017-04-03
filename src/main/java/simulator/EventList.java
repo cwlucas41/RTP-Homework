@@ -1,3 +1,4 @@
+package simulator;
 public interface EventList
 {
     public boolean add(Event e);

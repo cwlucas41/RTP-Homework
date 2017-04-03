@@ -1,3 +1,4 @@
+package simulator;
 public class Packet
 {
     private int seqnum;

@@ -1,3 +1,4 @@
+package simulator;
 public class Event
 {
     private double time;

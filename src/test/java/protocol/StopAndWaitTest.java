@@ -1,13 +1,9 @@
+package protocol;
 import static org.junit.Assert.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Arrays;
-
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
+
+import protocol.StopAndWait;
 
 public class StopAndWaitTest {
 
@@ -23,7 +19,7 @@ public class StopAndWaitTest {
         int winsize = 0;
         double delay = 0;
         
-		new StopAndWaitSimulator(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
+		new StopAndWait(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
 		.runSimulator();
 		
 		assertTrue(DiffTool.diff());
@@ -41,7 +37,7 @@ public class StopAndWaitTest {
         int winsize = 0;
         double delay = 0;
         
-		new StopAndWaitSimulator(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
+		new StopAndWait(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
 		.runSimulator();
 		
 		assertTrue(DiffTool.diff());
@@ -59,7 +55,7 @@ public class StopAndWaitTest {
         int winsize = 0;
         double delay = 0;
         
-		new StopAndWaitSimulator(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
+		new StopAndWait(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
 		.runSimulator();
 		
 		assertTrue(DiffTool.diff());
@@ -67,7 +63,7 @@ public class StopAndWaitTest {
 	
 	@Test
 	public void seqNumIncrementTestA() {
-		assertEquals(StopAndWaitSimulator.getNextSequenceNumber(0), 1);
-		assertEquals(StopAndWaitSimulator.getNextSequenceNumber(1), 0);
+		assertEquals(StopAndWait.getNextSequenceNumber(0), 1);
+		assertEquals(StopAndWait.getNextSequenceNumber(1), 0);
 	}
 }

@@ -1,3 +1,4 @@
+package simulator;
 public class Message
 {
     private String data;

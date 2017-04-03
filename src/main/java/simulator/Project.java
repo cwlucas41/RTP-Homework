@@ -1,4 +1,7 @@
+package simulator;
 import java.io.*;
+
+import protocol.StudentNetworkSimulator;
 
 public class Project
 {
