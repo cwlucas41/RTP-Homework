@@ -92,19 +92,22 @@ public class SelectiveRepeat extends NetworkSimulator
      *   int LimitSeqNo  : when sequence number reaches this value, it wraps around
      */
 
-    public final int FirstSeqNo = 0;
-    
+	// shared variables
+    public final static int FirstSeqNo = 0;
     private  int windowSize;
     private double rxmtInterval;
-    private int limitSeqNo;
+    private static int limitSeqNo;
     
-    private int sendSeqNum_A = FirstSeqNo;
+    
+    // A variables
+    private static int sendSeqNum_A = FirstSeqNo;
+    private int lastReceivedAckNum = -1;
     private Queue<Packet> unsentPacketQueue_A = new LinkedList<Packet>();
-    private SendWindow sendWindow = new SendWindow();
     private Timer timer_a = new Timer();
+    private SendWindow sendWindow;
     
-    private int recvSeqNum_B = FirstSeqNo;
-    private int ackNum_B = -1;
+    
+    // B variables
     private ReceiveWindow receiveWindow = new ReceiveWindow();
     
     // Add any necessary class variables here.  Remember, you cannot use
@@ -128,21 +131,19 @@ public class SelectiveRepeat extends NetworkSimulator
 		rxmtInterval = delay;
     }
     
-    boolean first = true;
-
-    
     // This routine will be called whenever the upper layer at the sender [A]
     // has a message to send.  It is the job of your protocol to insure that
     // the data in such a message is delivered in-order, and correctly, to
     // the receiving upper layer.
     protected void aOutput(Message message)
     {
+    	// add packets to unsent queue
     	Packet p = newDataPacket(sendSeqNum_A, message.getData());
     	unsentPacketQueue_A.add(p);
-    	
     	sendSeqNum_A = getNextSequenceNumber(sendSeqNum_A);
-    	    	
-		fillWindow();
+    	
+    	// makes sure new packets get to window if not full
+    	sendToFillWindow();
     }
     
     // This routine will be called whenever a packet sent from the B-side 
@@ -153,45 +154,32 @@ public class SelectiveRepeat extends NetworkSimulator
     {
 		// if valid ack that matched packet queue head's seq num, remove head
     	
-		if (
-			packet != null
-			&& packet.getChecksum() == calculateChecksum(packet) 
-		) {
-			if (packet.getAcknum() == -1) {
+		if (packet != null && packet.getChecksum() == calculateChecksum(packet)) {
+			
+			if (packet.getAcknum() == lastReceivedAckNum) {
+				// resend oldest packet in window if duplicate ack
 				retransmitOldestUnacked();
 			} else {
-				System.out.println("rcvd ack #" + packet.getAcknum());
-				
-				int before = sendWindow.size();
+				// ack packets in window
 				sendWindow.markAsAcked(packet.getAcknum());
-				
-				// if none acked, resend oldest
-				if ((before - sendWindow.size()) == 0 ) {
-					retransmitOldestUnacked();
-				}
+				lastReceivedAckNum = packet.getAcknum();
 			}
 		} 
 		
-		fillWindow();
+		// send as many new packets as possible
+		sendToFillWindow();
     }
     
-    private void fillWindow() {
-		// send head of packet queue if exists
-    	while (!sendWindow.isFull()) {
-    		if (unsentPacketQueue_A.peek() != null) {
-    			Packet p = unsentPacketQueue_A.remove();
-    			
-    			System.out.println("A sent new: " + p.getPayload() + " #" + p.getSeqnum());
-    			
-    			sendWindow.addUnackedPacket(p);
-    			toLayer3(A, p);
-    		} else {
-    			break;
-    		}
+    public void sendToFillWindow() {
+    	List<Packet> toSend = sendWindow.fillWindow(unsentPacketQueue_A);
+    	for (Packet p : toSend) {
+    		System.out.println("A sent new: " + p.getPayload() + " #" + p.getSeqnum());
+    		
+    		toLayer3(A, p);
     	}
     }
     
-    private void retransmitOldestUnacked() {
+    public void retransmitOldestUnacked() {
     	Packet p = sendWindow.getOldestPacket();
     	if (p != null) {
     		System.out.println("A sent again: " + p.getPayload() + " #" + p.getSeqnum());
@@ -200,99 +188,7 @@ public class SelectiveRepeat extends NetworkSimulator
 	    	timer_a.reset();
     	}
     }
-    
-    private class Timer {
-    	
-    	boolean timerIsSet = false;
-    	
-    	public void reset() {
-    		stop();
-    		start();
-    	}
-    	
-    	public void stop() {
-    		if (timerIsSet) { stopTimer(A); }
-    		timerIsSet = false;
-    	}
-    	
-    	public void start() {
-    		startTimer(A, rxmtInterval);
-    		timerIsSet = true;
-    	}
-    	
-    }
-    
-    private class SendWindow {
-    	private List<Packet> unackedPackets = new LinkedList<Packet>();
-    	
-    	
-    	public boolean isFull() {
-    		return !(unackedPackets.size() < windowSize);
-    	}
-    	
-    	public int size() {
-    		return unackedPackets.size();
-    	}
-    	
-    	public void addUnackedPacket(Packet p) {
-
-    		if (!isFull()) {
-    			// add p if it has correct sequence number
-        		int size = unackedPackets.size();
-        		if (size > 0) {
-	        		Packet last = unackedPackets.get(size - 1);
-	        		System.out.println("ADDING : " + last);
-	        		int nextSeqNumInWindow = getNextSequenceNumber(last.getSeqnum());
-	        		if (p.getSeqnum() != nextSeqNumInWindow) {
-	        			throw new IllegalArgumentException("Out of order sequence number");
-	        		}
-        		} else {
-        			timer_a.reset();
-        		}
-        		
-    			unackedPackets.add(p);
-    		} else {
-    			throw new IllegalStateException("Window is full");
-    		}
-    	}
-    	
-    	public void markAsAcked(int seq) {
-    		int startSize = unackedPackets.size();
-    		
-    		int ackIdx = -1;
-    		
-    		for (int i = 0; i < unackedPackets.size(); i++) {
-				Packet p = unackedPackets.get(i);
-				if (p.getSeqnum() == seq) {
-					ackIdx = i;
-					break;
-				}
-				
-			}
-    		
-    		for (int i = 0; i <= ackIdx; i++) {
-    			System.out.println("REMOVING : " + unackedPackets.get(0));
-    			unackedPackets.remove(0);
-    		}
-    		
-    		int endSize = unackedPackets.size();
-    		
-    		if (endSize == 0) {
-    			timer_a.stop();
-    		} else if ((startSize - endSize) > 0) {
-    			timer_a.reset();
-    		}
-    	}
-    	
-    	public Packet getOldestPacket() {
-    		if (unackedPackets.size() > 0) {
-    			return unackedPackets.get(0);
-    		} else {
-    			return null;
-    		}
-    	}
-    }
-    
+      
     // This routine will be called when A's timer expires (thus generating a 
     // timer interrupt). You'll probably want to use this routine to control 
     // the retransmission of packets. See startTimer() and stopTimer(), above,
@@ -308,7 +204,8 @@ public class SelectiveRepeat extends NetworkSimulator
     // of entity A).
     protected void aInit()
     {
-
+		sendSeqNum_A = FirstSeqNo;
+		sendWindow = new SendWindow(timer_a, windowSize);
     }
     
     // This routine will be called whenever a packet sent from the B-side 
@@ -407,7 +304,27 @@ public class SelectiveRepeat extends NetworkSimulator
     	return p.getSeqnum() + p.getAcknum() + p.getPayload().chars().sum();
     }
     
-    int getNextSequenceNumber(int sequenceNumber) {
+    public static int getNextSequenceNumber(int sequenceNumber) {
     	return (sequenceNumber + 1) % limitSeqNo;
+    }
+    
+    public class Timer {
+    	
+    	boolean timerIsSet = false;
+
+    	public void reset() {
+    		stop();
+    		start();
+    	}
+    	
+    	public void stop() {
+    		if (timerIsSet) { stopTimer(A); }
+    		timerIsSet = false;
+    	}
+    	
+    	public void start() {
+    		startTimer(A, rxmtInterval);
+    		timerIsSet = true;
+    	}
     }
 }
