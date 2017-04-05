@@ -5,8 +5,6 @@ import simulator.Message;
 import simulator.NetworkSimulator;
 import simulator.Packet;
 
-import java.io.*;
-
 public class StopAndWait extends NetworkSimulator
 {
     /*

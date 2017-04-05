@@ -1,13 +1,13 @@
 package simulator;
 import java.io.*;
 
-import protocol.StudentNetworkSimulator;
+import protocol.SelectiveRepeat;
 
 public class Project
 {
     public final static void main(String[] argv)
     {
-        StudentNetworkSimulator simulator;
+        SelectiveRepeat simulator;
         
         int nsim = -1;
         double loss = -1;
@@ -268,7 +268,7 @@ public class Project
             }
         }
          
-        simulator = new StudentNetworkSimulator(nsim, loss, corrupt, delay,
+        simulator = new SelectiveRepeat(nsim, loss, corrupt, delay,
                                                 trace, seed, windowsize, timeout);
                                                 
         simulator.runSimulator();

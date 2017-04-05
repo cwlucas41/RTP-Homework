@@ -1,35 +1,51 @@
 package protocol;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.Scanner;
+
+import static org.junit.Assert.*;
 
 public class DiffTool {
-	public static boolean diff() {
-		
-		byte[] f1 = null;
-		byte[] f2 = null;
-		
-		try {
-			f1 = Files.readAllBytes(Paths.get("InputFile"));
-			f2 = Files.readAllBytes(Paths.get("OutputFile"));
-		} catch (IOException e) {
+	
+	public static void diff() {
+        int i = 0;
+        
+        String s1 = null, s2 = null;
+        
+        try {
+        	s1 = new String(Files.readAllBytes(Paths.get("InputFile")));
+			s2 = new String(Files.readAllBytes(Paths.get("OutputFile")));
+		} catch (IOException e1) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			e1.printStackTrace();
 		}
-		
-		boolean same = Arrays.equals(f1, f2) && f1.length>0 && f2.length>0;
-		
-		if (!same) {
-			System.out.println("----------In----------");
-			System.out.print(new String(f1));
-			
-			System.out.println();
-			
-			System.out.println("----------Out----------");
-			System.out.print(new String(f2));
-		}
-		
-		return same;
+        
+        Scanner sc1 = new Scanner(s1);
+        Scanner sc2 = new Scanner(s2);
+        
+        while (sc1.hasNext() && sc2.hasNext()) {
+        	i++;
+        	if (!sc1.next().equals(sc2.next())) {
+        		print(s1, s2);
+        		fail();
+        	}
+        }
+        
+        if (i < 200) {
+        	print(s1, s2);
+        	fail();
+        }
+        
+        sc1.close();
+        sc2.close();
+	}
+	
+	public static void print(String input, String output) {
+		System.out.println("---------- Input ----------");
+		System.out.println(input);
+		System.out.println("---------- Output ----------");
+		System.out.println(output);
 	}
 }
