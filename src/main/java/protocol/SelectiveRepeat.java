@@ -162,6 +162,8 @@ public class SelectiveRepeat extends NetworkSimulator
     {
 		// if valid ack that matched packet queue head's seq num, remove head
     	
+    	System.out.println("A received: " + packet);
+    	
 		if (!AutoPacket.isCorrupt(packet)) {
 			
 			if (packet.getAcknum() == lastReceivedAckNum) {
@@ -188,14 +190,16 @@ public class SelectiveRepeat extends NetworkSimulator
     public void sendToFillWindow() {
     	List<Packet> toSend = sendWindow.fillWindow(unsentPacketQueue_A);
     	for (Packet p : toSend) {
+    		System.out.println("A sending: " + p);
     		toLayer3(A, p);
-    		transmitDataCounter++;
+    		transmitDataCounter++;	
     	}
     }
     
     public void retransmitOldestUnacked() {
     	Packet p = sendWindow.getOldestPacket();
-    	if (p != null) {    		
+    	if (p != null) {   
+    		System.out.println("A resending: " + p);
 	    	toLayer3(A, p);
 	    	timer_a.restart();
 	    	retransmitCounter++;
@@ -228,6 +232,8 @@ public class SelectiveRepeat extends NetworkSimulator
     // sent from the A-side.
     protected void bInput(Packet packet)
     {
+    	System.out.println("B received: " + packet);
+    	
     	if (!AutoPacket.isCorrupt(packet)) {
     		List<Packet> deliverable = receiveWindow.getDeliverablePacketsAfterAck(packet);
     		for (Packet p : deliverable) {
@@ -239,6 +245,7 @@ public class SelectiveRepeat extends NetworkSimulator
     	}
     	
     	Packet p = new AutoPacket(receiveWindow.getLastAckNumber());
+    	System.out.println("B sending: " + p);
 		toLayer3(B, p);
 		transmitAckCounter++;
     }

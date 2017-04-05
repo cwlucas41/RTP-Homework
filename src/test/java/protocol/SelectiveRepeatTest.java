@@ -4,9 +4,9 @@ import org.junit.Test;
 
 public class SelectiveRepeatTest {
 
-	int numMessages = 1000;
+	int numMessages = 100;
     double avgDelay = 10;
-    int trace = 0;
+    int trace = 2;
     int seed = 2233;
     int winsize = 8;
     double delay = 20;

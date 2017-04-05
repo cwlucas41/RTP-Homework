@@ -12,7 +12,6 @@ public class SendWindow {
 	private int windowSize;
 	
 	public SendWindow(SelectiveRepeat.Timer t, int windowSize) {
-		// TODO Auto-generated constructor stub
 		this.timer_a = t;
 		this.windowSize = windowSize;
 	}

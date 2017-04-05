@@ -33,7 +33,7 @@ public class DiffTool {
         	}
         }
         
-        if (i < 200) {
+        if (i < 20) {
 //        	print(s1, s2);
         	fail("too few delivered only " + i + " were delivered");
         }
