@@ -105,6 +105,7 @@ public class SelectiveRepeat extends NetworkSimulator
     
     private int recvSeqNum_B = FirstSeqNo;
     private int ackNum_B = -1;
+    private ReceiveWindow receiveWindow = new ReceiveWindow();
     
     // Add any necessary class variables here.  Remember, you cannot use
     // these variables to send messages error free!  They can only hold
@@ -319,17 +320,60 @@ public class SelectiveRepeat extends NetworkSimulator
     	System.out.println("B rcvd " + packet.getPayload() + " #" + packet.getSeqnum());
     	if (
 			packet.getChecksum() == calculateChecksum(packet) 
-			&& packet.getSeqnum() == recvSeqNum_B
     	) {
-    		toLayer5(packet.getPayload());
-    		recvSeqNum_B = getNextSequenceNumber(recvSeqNum_B);
-    		ackNum_B = packet.getSeqnum();
+    		receiveWindow.addPacket(packet);
     	}
     	
-    	Packet p = newAckPacket(ackNum_B);
-		
+    	sendAck(receiveWindow.getLastAckNumber());
+    	
+    	
+    }
+    
+    private void sendAck(int ackNum) {
+    	Packet p = newAckPacket(ackNum);
 		System.out.println("B sent ack #" + p.getAcknum());
 		toLayer3(B, p);
+    }
+    
+    private class ReceiveWindow {
+    	
+    	
+    	private int lastAckNumber = -1;
+    	private int nextDeliveredNumber = 0;
+    	private Map<Integer, Packet> map = new HashMap<Integer, Packet>();
+    	
+    	public int getLastAckNumber() {
+    		return lastAckNumber;
+    	}
+    	
+    	public void addPacket(Packet p) {
+    		
+    		if (p.getSeqnum() == getNextSequenceNumber(lastAckNumber)) {
+    			lastAckNumber = getNextSequenceNumber(lastAckNumber);
+    		}
+   
+    		// add packet to map if its seq num is in current window
+    		int n = nextDeliveredNumber;
+    		for (int i = 0; i < windowSize; i++) {
+    			if (p.getSeqnum() == n) {
+    				map.put(p.getSeqnum(), p);
+    				break;
+    			}
+    			n = getNextSequenceNumber(n);
+    		}
+    		
+    		deliver();
+    	}
+    	
+    	private void deliver() {
+    		if (map.containsKey(nextDeliveredNumber)) {
+    			toLayer5(map.get(nextDeliveredNumber).getPayload());
+    			map.remove(nextDeliveredNumber);
+    			nextDeliveredNumber = getNextSequenceNumber(nextDeliveredNumber);
+    			
+    			deliver();
+    		}
+    	} 	
     }
     
     // This routine will be called once, before any of your other B-side 
