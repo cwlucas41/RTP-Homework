@@ -102,13 +102,21 @@ public class SelectiveRepeat extends NetworkSimulator
     // A variables
     private static int sendSeqNum_A = FirstSeqNo;
     private int lastReceivedAckNum = -1;
+    private int duplicateAckCounter = 0;
     private Queue<Packet> unsentPacketQueue_A = new LinkedList<Packet>();
     private Timer timer_a = new Timer();
     private SendWindow sendWindow;
+    private int corruptAckCounter = 0;
+    private int retransmitCounter = 0;
+    private int transmitDataCounter = 0;
+    private int interruptCounter = 0;
     
     
     // B variables
     private ReceiveWindow receiveWindow;
+    private int transmitAckCounter = 0;
+    private int corruptDataCounter = 0;
+    private int deliveredCounter = 0;
     
     // Add any necessary class variables here.  Remember, you cannot use
     // these variables to send messages error free!  They can only hold
@@ -154,17 +162,24 @@ public class SelectiveRepeat extends NetworkSimulator
     {
 		// if valid ack that matched packet queue head's seq num, remove head
     	
-		if (packet != null && !AutoPacket.isCorrupt(packet)) {
+		if (!AutoPacket.isCorrupt(packet)) {
 			
 			if (packet.getAcknum() == lastReceivedAckNum) {
-				// resend oldest packet in window if duplicate ack
-				retransmitOldestUnacked();
+				duplicateAckCounter++;
+				
+				// resend oldest packet in window if third ack
+				if (duplicateAckCounter > 3) {
+					retransmitOldestUnacked();
+				}
 			} else {
 				// ack packets in window
 				sendWindow.markAsAcked(packet.getAcknum());
 				lastReceivedAckNum = packet.getAcknum();
+				duplicateAckCounter = 1;
 			}
-		} 
+		} else {
+			corruptAckCounter++;
+		}
 		
 		// send as many new packets as possible
 		sendToFillWindow();
@@ -173,19 +188,17 @@ public class SelectiveRepeat extends NetworkSimulator
     public void sendToFillWindow() {
     	List<Packet> toSend = sendWindow.fillWindow(unsentPacketQueue_A);
     	for (Packet p : toSend) {
-    		System.out.println("A sent new: " + p.getPayload() + " #" + p.getSeqnum());
-    		
     		toLayer3(A, p);
+    		transmitDataCounter++;
     	}
     }
     
     public void retransmitOldestUnacked() {
     	Packet p = sendWindow.getOldestPacket();
-    	if (p != null) {
-    		System.out.println("A sent again: " + p.getPayload() + " #" + p.getSeqnum());
-    		
+    	if (p != null) {    		
 	    	toLayer3(A, p);
-	    	timer_a.reset();
+	    	timer_a.restart();
+	    	retransmitCounter++;
     	}
     }
       
@@ -195,8 +208,8 @@ public class SelectiveRepeat extends NetworkSimulator
     // for how the timer is started and stopped. 
     protected void aTimerInterrupt()
     {
+    	interruptCounter++;
 		retransmitOldestUnacked();
-		timer_a.timerIsSet = false;
     }
     
     // This routine will be called once, before any of your other A-side 
@@ -215,15 +228,19 @@ public class SelectiveRepeat extends NetworkSimulator
     // sent from the A-side.
     protected void bInput(Packet packet)
     {
-    	if (packet != null && !AutoPacket.isCorrupt(packet)) {
+    	if (!AutoPacket.isCorrupt(packet)) {
     		List<Packet> deliverable = receiveWindow.getDeliverablePacketsAfterAck(packet);
     		for (Packet p : deliverable) {
+    			deliveredCounter++;
     			toLayer5(p.getPayload());
     		}
+    	} else {
+    		corruptDataCounter++;
     	}
     	
     	Packet p = new AutoPacket(receiveWindow.getLastAckNumber());
 		toLayer3(B, p);
+		transmitAckCounter++;
     }
     
     // This routine will be called once, before any of your other B-side 
@@ -238,7 +255,18 @@ public class SelectiveRepeat extends NetworkSimulator
     // Use to print final statistics
     protected void Simulation_done()
     {
-    	System.out.println("finished \n\n\n\n\n");
+    	System.out.println();
+    	System.out.println("---------- Statistics ----------");
+    	System.out.println("sent data packets: " + transmitDataCounter);
+    	System.out.println("corrupt data packets: " + corruptDataCounter);
+    	System.out.println("resent data packets: " + retransmitCounter);
+    	System.out.println("interrupts: " + interruptCounter);
+    	System.out.println("total sent data packets: " + (transmitDataCounter + retransmitCounter));
+    	System.out.println();
+    	System.out.println("sent ack packets: " + transmitAckCounter);
+    	System.out.println("corrupt ack packets: " + corruptAckCounter);
+    	System.out.println();
+    	System.out.println("delivered packets: " + deliveredCounter);
     }
     
     public static int getNextSequenceNumber(int sequenceNumber) {
@@ -246,22 +274,14 @@ public class SelectiveRepeat extends NetworkSimulator
     }
     
     public class Timer {
-    	
-    	boolean timerIsSet = false;
-
-    	public void reset() {
+    
+    	public void restart() {
     		stop();
-    		start();
+    		startTimer(A, rxmtInterval);
     	}
     	
     	public void stop() {
-    		if (timerIsSet) { stopTimer(A); }
-    		timerIsSet = false;
-    	}
-    	
-    	public void start() {
-    		startTimer(A, rxmtInterval);
-    		timerIsSet = true;
+    		stopTimer(A);
     	}
     }
 }

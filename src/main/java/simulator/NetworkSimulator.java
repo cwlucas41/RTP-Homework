@@ -222,8 +222,8 @@ public abstract class NetworkSimulator
         // timer
         if (timer == null)
         {
-            System.out.println("stopTimer: Warning: Unable to cancel your " +
-                               "timer");
+//            System.out.println("stopTimer: Warning: Unable to cancel your " +
+//                               "timer");
         }        
     }
     

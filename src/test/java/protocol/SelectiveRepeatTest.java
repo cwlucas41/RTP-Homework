@@ -4,17 +4,20 @@ import org.junit.Test;
 
 public class SelectiveRepeatTest {
 
+	int numMessages = 1000;
+    double avgDelay = 10;
+    int trace = 0;
+    int seed = 2233;
+    int winsize = 8;
+    double delay = 20;
+	
 	@Test
-	public void rdt1_0Test() {
+	public void noCorruptionNoLoss() {
 		
-		int numMessages = 1000;
+		System.out.println("\nnoCorruptionNoLoss");
+		
         double loss = 0;
         double corrupt = 0;
-        double avgDelay = 10;
-        int trace = 0;
-        int seed = 2233;
-        int winsize = 8;
-        double delay = 20;
         
 		new SelectiveRepeat(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
 		.runSimulator();
@@ -23,16 +26,12 @@ public class SelectiveRepeatTest {
 	}
 	
 	@Test
-	public void rdt2_2Test() {
+	public void CorruptionNoLoss() {
+
+		System.out.println("\nCorruptionNoLoss");
 		
-		int numMessages = 1000;
         double loss = 0;
-        double corrupt = .2;
-        double avgDelay = 10;
-        int trace = 0;
-        int seed = 2233;
-        int winsize = 8;
-        double delay = 20;
+        double corrupt = .15;
         
 		new SelectiveRepeat(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
 		.runSimulator();
@@ -41,16 +40,26 @@ public class SelectiveRepeatTest {
 	}
 	
 	@Test
-	public void rdt3_0Test() {
+	public void NoCorruptionLoss() {
+
+		System.out.println("\nNoCorruptionLoss");
 		
-		int numMessages = 1000;
-	    double loss = .2;
-	    double corrupt = .2;
-	    double avgDelay = 10;
-	    int trace = 0;
-	    int seed = 2233;
-	    int winsize = 8;
-	    double delay = 20;
+        double loss = .1;
+        double corrupt = 0;
+        
+		new SelectiveRepeat(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
+		.runSimulator();
+		
+		DiffTool.diff();
+	}
+	
+	@Test
+	public void CorruptionLoss() {
+
+		System.out.println("\nCorruptionLoss");
+		
+	    double loss = .1;
+	    double corrupt = .15;
        
 		new SelectiveRepeat(numMessages, loss, corrupt, avgDelay, trace, seed, winsize, delay)
 		.runSimulator();

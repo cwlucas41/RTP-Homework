@@ -29,13 +29,13 @@ public class DiffTool {
         	i++;
         	if (!sc1.next().equals(sc2.next())) {
         		print(s1, s2);
-        		fail();
+        		fail("data does not match");
         	}
         }
         
         if (i < 200) {
-        	print(s1, s2);
-        	fail();
+//        	print(s1, s2);
+        	fail("too few delivered only " + i + " were delivered");
         }
         
         sc1.close();

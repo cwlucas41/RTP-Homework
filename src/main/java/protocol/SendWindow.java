@@ -28,13 +28,12 @@ public class SendWindow {
     		int size = unackedPackets.size();
     		if (size > 0) {
         		Packet last = unackedPackets.get(size - 1);
-        		System.out.println("ADDING : " + last);
         		int nextSeqNumInWindow = SelectiveRepeat.getNextSequenceNumber(last.getSeqnum());
         		if (p.getSeqnum() != nextSeqNumInWindow) {
         			throw new IllegalArgumentException("Out of order sequence number");
         		}
     		} else {
-    			timer_a.reset();
+    			timer_a.restart();
     		}
     		
 			unackedPackets.add(p);
@@ -75,7 +74,6 @@ public class SendWindow {
 		}
 		
 		for (int i = 0; i <= ackIdx; i++) {
-			System.out.println("REMOVING : " + unackedPackets.get(0));
 			unackedPackets.remove(0);
 		}
 		
@@ -84,7 +82,7 @@ public class SendWindow {
 		if (endSize == 0) {
 			timer_a.stop();
 		} else if ((startSize - endSize) > 0) {
-			timer_a.reset();
+			timer_a.restart();
 		}
 	}
 	
