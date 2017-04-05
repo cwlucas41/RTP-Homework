@@ -138,7 +138,7 @@ public class SelectiveRepeat extends NetworkSimulator
     protected void aOutput(Message message)
     {
     	// add packets to unsent queue
-    	Packet p = newDataPacket(sendSeqNum_A, message.getData());
+    	Packet p = new AutoPacket(sendSeqNum_A, message.getData());
     	unsentPacketQueue_A.add(p);
     	sendSeqNum_A = getNextSequenceNumber(sendSeqNum_A);
     	
@@ -154,7 +154,7 @@ public class SelectiveRepeat extends NetworkSimulator
     {
 		// if valid ack that matched packet queue head's seq num, remove head
     	
-		if (packet != null && packet.getChecksum() == calculateChecksum(packet)) {
+		if (packet != null && !AutoPacket.isCorrupt(packet)) {
 			
 			if (packet.getAcknum() == lastReceivedAckNum) {
 				// resend oldest packet in window if duplicate ack
@@ -196,6 +196,7 @@ public class SelectiveRepeat extends NetworkSimulator
     protected void aTimerInterrupt()
     {
 		retransmitOldestUnacked();
+		timer_a.timerIsSet = false;
     }
     
     // This routine will be called once, before any of your other A-side 
@@ -214,24 +215,14 @@ public class SelectiveRepeat extends NetworkSimulator
     // sent from the A-side.
     protected void bInput(Packet packet)
     {
-    	System.out.println("B rcvd " + packet.getPayload() + " #" + packet.getSeqnum());
-    	if (
-			packet.getChecksum() == calculateChecksum(packet) 
-    	) {
+    	if (packet != null && !AutoPacket.isCorrupt(packet)) {
     		List<Packet> deliverable = receiveWindow.getDeliverablePacketsAfterAck(packet);
     		for (Packet p : deliverable) {
     			toLayer5(p.getPayload());
     		}
     	}
     	
-    	sendAck(receiveWindow.getLastAckNumber());
-    	
-    	
-    }
-    
-    private void sendAck(int ackNum) {
-    	Packet p = newAckPacket(ackNum);
-		System.out.println("B sent ack #" + p.getAcknum());
+    	Packet p = new AutoPacket(receiveWindow.getLastAckNumber());
 		toLayer3(B, p);
     }
     
@@ -248,22 +239,6 @@ public class SelectiveRepeat extends NetworkSimulator
     protected void Simulation_done()
     {
     	System.out.println("finished \n\n\n\n\n");
-    }
-        
-    private Packet newDataPacket(int seq, String newPayload) {
-    	Packet p = new Packet(seq, -1, 0, newPayload);
-    	p.setChecksum(calculateChecksum(p));
-    	return p;
-    }
-    
-    private Packet newAckPacket(int ack) {
-    	Packet p = new Packet(-1, ack, 0);
-    	p.setChecksum(calculateChecksum(p));
-    	return p;
-    }
-    
-    private int calculateChecksum(Packet p) {
-    	return p.getSeqnum() + p.getAcknum() + p.getPayload().chars().sum();
     }
     
     public static int getNextSequenceNumber(int sequenceNumber) {
