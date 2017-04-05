@@ -108,7 +108,7 @@ public class SelectiveRepeat extends NetworkSimulator
     
     
     // B variables
-    private ReceiveWindow receiveWindow = new ReceiveWindow();
+    private ReceiveWindow receiveWindow;
     
     // Add any necessary class variables here.  Remember, you cannot use
     // these variables to send messages error free!  They can only hold
@@ -218,7 +218,10 @@ public class SelectiveRepeat extends NetworkSimulator
     	if (
 			packet.getChecksum() == calculateChecksum(packet) 
     	) {
-    		receiveWindow.addPacket(packet);
+    		List<Packet> deliverable = receiveWindow.getDeliverablePacketsAfterAck(packet);
+    		for (Packet p : deliverable) {
+    			toLayer5(p.getPayload());
+    		}
     	}
     	
     	sendAck(receiveWindow.getLastAckNumber());
@@ -232,54 +235,13 @@ public class SelectiveRepeat extends NetworkSimulator
 		toLayer3(B, p);
     }
     
-    private class ReceiveWindow {
-    	
-    	
-    	private int lastAckNumber = -1;
-    	private int nextDeliveredNumber = 0;
-    	private Map<Integer, Packet> map = new HashMap<Integer, Packet>();
-    	
-    	public int getLastAckNumber() {
-    		return lastAckNumber;
-    	}
-    	
-    	public void addPacket(Packet p) {
-    		
-    		if (p.getSeqnum() == getNextSequenceNumber(lastAckNumber)) {
-    			lastAckNumber = getNextSequenceNumber(lastAckNumber);
-    		}
-   
-    		// add packet to map if its seq num is in current window
-    		int n = nextDeliveredNumber;
-    		for (int i = 0; i < windowSize; i++) {
-    			if (p.getSeqnum() == n) {
-    				map.put(p.getSeqnum(), p);
-    				break;
-    			}
-    			n = getNextSequenceNumber(n);
-    		}
-    		
-    		deliver();
-    	}
-    	
-    	private void deliver() {
-    		if (map.containsKey(nextDeliveredNumber)) {
-    			toLayer5(map.get(nextDeliveredNumber).getPayload());
-    			map.remove(nextDeliveredNumber);
-    			nextDeliveredNumber = getNextSequenceNumber(nextDeliveredNumber);
-    			
-    			deliver();
-    		}
-    	} 	
-    }
-    
     // This routine will be called once, before any of your other B-side 
     // routines are called. It can be used to do any required
     // initialization (e.g. of member variables you add to control the state
     // of entity B).
     protected void bInit()
     {
-
+    	receiveWindow = new ReceiveWindow(windowSize);
     }
 
     // Use to print final statistics
